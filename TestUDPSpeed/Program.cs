@@ -9,9 +9,10 @@ namespace TestUDPSpeed
     {
         public class TestObj
         {
-            public byte[] sample = new byte[1000];
+            public byte[] sample = new byte[100];
             public int count = 10000;
             public Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            
             public IPEndPoint sender;
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
@@ -38,18 +39,20 @@ namespace TestUDPSpeed
         static void Main(string[] args)
         {
             var testObj1 = new TestObj(5001);
-            var testObj2 = new TestObj(5002);
-            var testObj3 = new TestObj(5003);
-            MultiSending(testObj1, testObj2, testObj3);
+//            var testObj2 = new TestObj(5002);
+//            var testObj3 = new TestObj(5003);
+            
+//            MultiSending(testObj1, testObj2, testObj3);
 
-//            var th1 = new Thread(testObj1.Sending);
+            var th1 = new Thread(testObj1.Sending);
+            var th2 = new Thread(testObj1.Sending);
 //            var th2 = new Thread(testObj2.Sending);
 //            var th3 = new Thread(testObj3.Sending);
-//            th1.Start();
-//            th2.Start();
+            th1.Start();
+            th2.Start();
 //            th3.Start();
-//            th1.Join();
-//            th2.Join();
+            th1.Join();
+            th2.Join();
 //            th3.Join();
         }
 
