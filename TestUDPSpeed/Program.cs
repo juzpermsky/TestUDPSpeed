@@ -44,7 +44,7 @@ namespace TestUDPSpeed
         static void Main(string[] args)
         {
             var testObj1 = new TestObj(5001);
-//            var testObj2 = new TestObj(5002);
+            var testObj2 = new TestObj(5002);
 //            var testObj3 = new TestObj(5003);
 //            testObj1.Sending();
 //            testObj1.Sending();
@@ -52,8 +52,7 @@ namespace TestUDPSpeed
 
             var t1 = DateTime.Now;
             var th1 = new Thread(testObj1.Sending);
-            var th2 = new Thread(testObj1.Sending);
-//            var th2 = new Thread(testObj2.Sending);
+            var th2 = new Thread(testObj2.Sending);
 //            var th3 = new Thread(testObj3.Sending);
             th2.Start();
             th1.Start();
