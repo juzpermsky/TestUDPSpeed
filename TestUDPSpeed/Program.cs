@@ -33,9 +33,8 @@ namespace TestUDPSpeed
                     lock (sendLock)
                     {
                         socket.SendTo(sample, receiver);
+                        i++;
                     }
-
-                    i++;
                 }
 
                 Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
@@ -51,16 +50,18 @@ namespace TestUDPSpeed
 //            testObj1.Sending();
 //            MultiSending(testObj1, testObj2, testObj3);
 
+            var t1 = DateTime.Now;
             var th1 = new Thread(testObj1.Sending);
             var th2 = new Thread(testObj1.Sending);
 //            var th2 = new Thread(testObj2.Sending);
 //            var th3 = new Thread(testObj3.Sending);
-            th1.Start();
             th2.Start();
+            th1.Start();
 //            th3.Start();
             th1.Join();
             th2.Join();
 //            th3.Join();
+            Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 
         static void MultiSending(TestObj testObj1, TestObj testObj2, TestObj testObj3)
