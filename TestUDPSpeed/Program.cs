@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Threading;
 
 namespace TestUDPSpeed
 {
@@ -36,7 +37,10 @@ namespace TestUDPSpeed
         static void Main(string[] args)
         {
             var testObj = new TestObj();
-            testObj.Sending();
+            var th = new Thread(testObj.Sending);
+            th.Start();
+            th.Join();
+
         }
     }
 }
