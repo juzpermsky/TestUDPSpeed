@@ -26,18 +26,18 @@ namespace TestUDPSpeed
 
             public void Sending()
             {
-                var t1 = DateTime.Now;
                 var i = 0;
-                while (i < count)
+                lock (sendLock)
                 {
-                    lock (sendLock)
+                    var t1 = DateTime.Now;
+                    while (i < count)
                     {
                         socket.SendTo(sample, receiver);
                         i++;
                     }
-                }
 
-                Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
+                    Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
+                }
             }
         }
 
