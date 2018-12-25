@@ -12,9 +12,11 @@ namespace TestUDPSpeed
             public byte[] sample = new byte[100];
             public int count = 10000;
             public Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            
+
             public IPEndPoint sender;
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
+
+            private readonly object sendLock = new object();
 
             public TestObj(int senderPort)
             {
@@ -28,7 +30,11 @@ namespace TestUDPSpeed
                 var i = 0;
                 while (i < count)
                 {
-                    socket.SendTo(sample, receiver);
+                    lock (sendLock)
+                    {
+                        socket.SendTo(sample, receiver);
+                    }
+
                     i++;
                 }
 
@@ -41,7 +47,8 @@ namespace TestUDPSpeed
             var testObj1 = new TestObj(5001);
 //            var testObj2 = new TestObj(5002);
 //            var testObj3 = new TestObj(5003);
-            
+//            testObj1.Sending();
+//            testObj1.Sending();
 //            MultiSending(testObj1, testObj2, testObj3);
 
             var th1 = new Thread(testObj1.Sending);
