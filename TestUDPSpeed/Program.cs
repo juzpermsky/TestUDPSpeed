@@ -39,17 +39,17 @@ namespace TestUDPSpeed
         {
             var testObj1 = new TestObj(5001);
             var testObj2 = new TestObj(5002);
-//            var testObj3 = new TestObj(5003);
+            var testObj3 = new TestObj(5003);
             
             var th1 = new Thread(testObj1.Sending);
             var th2 = new Thread(testObj2.Sending);
-//            var th3 = new Thread(testObj3.Sending);
+            var th3 = new Thread(testObj3.Sending);
             th1.Start();
             th2.Start();
-//            th3.Start();
+            th3.Start();
             th1.Join();
             th2.Join();
-//            th3.Join();
+            th3.Join();
         }
     }
 }
