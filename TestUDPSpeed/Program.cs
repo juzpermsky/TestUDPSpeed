@@ -12,11 +12,12 @@ namespace TestUDPSpeed
             public byte[] sample = new byte[10];
             public int count = 10000;
             Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            public IPEndPoint sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5001);
+            public IPEndPoint sender;
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
-            public TestObj()
+            public TestObj(int senderPort)
             {
+                sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), senderPort);
                 socket.Bind(sender);
             }
 
@@ -30,17 +31,25 @@ namespace TestUDPSpeed
                     i++;
                 }
 
-                Console.WriteLine($"{i} samples sent in {DateTime.Now - t1}");
+                Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
             }
         }
 
         static void Main(string[] args)
         {
-            var testObj = new TestObj();
-            var th = new Thread(testObj.Sending);
-            th.Start();
-            th.Join();
-
+            var testObj1 = new TestObj(5001);
+            var testObj2 = new TestObj(5002);
+//            var testObj3 = new TestObj(5003);
+            
+            var th1 = new Thread(testObj1.Sending);
+            var th2 = new Thread(testObj2.Sending);
+//            var th3 = new Thread(testObj3.Sending);
+            th1.Start();
+            th2.Start();
+//            th3.Start();
+            th1.Join();
+            th2.Join();
+//            th3.Join();
         }
     }
 }
