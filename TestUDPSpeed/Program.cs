@@ -32,7 +32,9 @@ namespace TestUDPSpeed
                 {
                     lock (sendLock)
                     {
-                        socket.SendTo(sample, receiver);
+                        var newSample = new byte[100];
+                        socket.SendTo(newSample, receiver);
+//                        socket.SendTo(sample, receiver);
                         i++;
                     }
                 }
