@@ -7,7 +7,6 @@ namespace TestUDPSpeed
 {
     class Program
     {
-
         public class TestObj
         {
             private static readonly object sendLock = new object();
@@ -28,17 +27,17 @@ namespace TestUDPSpeed
             public void Sending()
             {
                 var i = 0;
-                lock (sendLock)
+                var t1 = DateTime.Now;
+                while (i < count)
                 {
-                    var t1 = DateTime.Now;
-                    while (i < count)
+                    lock (sendLock)
                     {
                         socket.SendTo(sample, receiver);
                         i++;
                     }
-
-                    Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
                 }
+
+                Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
             }
         }
 
