@@ -7,8 +7,10 @@ namespace TestUDPSpeed
 {
     class Program
     {
+
         public class TestObj
         {
+            private static readonly object sendLock = new object();
             public byte[] sample = new byte[100];
             public int count = 10000;
             public Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
@@ -16,7 +18,6 @@ namespace TestUDPSpeed
             public IPEndPoint sender;
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
-            private readonly object sendLock = new object();
 
             public TestObj(int senderPort)
             {
