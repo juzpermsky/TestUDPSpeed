@@ -6,22 +6,37 @@ namespace TestUDPSpeed
 {
     class Program
     {
-        static void Main(string[] args)
+        public class TestObj
         {
-            var socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            socket.Bind(new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5001));
+            public byte[] sample = new byte[10];
+            public int count = 10000;
+            Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            public IPEndPoint sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5001);
+            public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
-            var sample = new byte[10];
-            var receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
-            var i = 0;
-            var t1 = DateTime.Now;
-            while (i < 10000)
+            public TestObj()
             {
-                socket.SendTo(sample, receiver);
-                i++;
+                socket.Bind(sender);
             }
 
-            Console.WriteLine($"{i} samples sent in {DateTime.Now - t1}");
+            public void Sending()
+            {
+                var t1 = DateTime.Now;
+                var i = 0;
+                while (i < count)
+                {
+                    socket.SendTo(sample, receiver);
+                    i++;
+                }
+
+                Console.WriteLine($"{i} samples sent in {DateTime.Now - t1}");
+            }
+        }
+
+        static void Main(string[] args)
+        {
+            var testObj = new TestObj();
+            testObj.Sending();
         }
     }
 }
