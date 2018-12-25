@@ -21,7 +21,7 @@ namespace TestUDPSpeed
             public TestObj(int senderPort)
             {
                 sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), senderPort);
-                socket.Bind(sender);
+                socket.Bind(sender); 
             }
 
             public void Sending()
