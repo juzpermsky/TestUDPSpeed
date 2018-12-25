@@ -9,7 +9,7 @@ namespace TestUDPSpeed
     {
         public class TestObj
         {
-            public byte[] sample = new byte[10];
+            public byte[] sample = new byte[100];
             public int count = 10000;
             Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
             public IPEndPoint sender;
