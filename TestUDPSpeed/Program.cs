@@ -67,31 +67,24 @@ namespace TestUDPSpeed
                 {
                     while (sendQueue.Count > 0)
                     {
+                        byte[] curSample;
                         lock (sendQueue)
                         {
-                            var sample = sendQueue.Dequeue();
-                            if (sample == null)
+                            curSample = sendQueue.Dequeue();
+                        }
+
+                        lock (sendLock)
+                        {
+                            socket.SendTo(curSample, receiver);
+                            i++;
+                            if (i % 1000 == 0)
                             {
-                                Console.WriteLine($"{i}-sample is null");
-                                i++;
-                            }
-                            else
-                            {
-                                lock (sendLock)
-                                {
-                                    socket.SendTo(sample, receiver);
-                                    i++;
-                                    if (i % 1000 == 0)
-                                    {
-                                        Console.WriteLine($"{i} samples sent");
-                                    }
-                                }
+                                Console.WriteLine($"{i} samples sent");
                             }
                         }
                     }
                 }
-                Console.WriteLine($"{i} samples processed");
-
+                Console.WriteLine($"{i} samples from port {sender.Port} processed");
             }
         }
 
