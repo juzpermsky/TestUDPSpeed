@@ -63,6 +63,7 @@ namespace TestUDPSpeed
             public void SendingFromQueue()
             {
                 var i = 0;
+                var t1 = DateTime.Now;
                 while (enqueuing || sendQueue.Count > 0)
                 {
                     while (sendQueue.Count > 0)
@@ -77,29 +78,32 @@ namespace TestUDPSpeed
                         {
                             socket.SendTo(curSample, receiver);
                             i++;
-                            if (i % 1000 == 0)
-                            {
-                                Console.WriteLine($"{i} samples sent");
-                            }
                         }
                     }
                 }
-                Console.WriteLine($"{i} samples from port {sender.Port} processed");
+                Console.WriteLine($"{i} samples from port {sender.Port} sent in  {DateTime.Now - t1}");
             }
         }
 
         static void Main(string[] args)
         {
             var testObj1 = new TestObj(5001);
+            var testObj2 = new TestObj(5002);
 
             var t1 = DateTime.Now;
-            //var th1 = new Thread(testObj1.Sending);
-            var th1 = new Thread(testObj1.Enqueuing);
-            var th2 = new Thread(testObj1.SendingFromQueue);
-            th1.Start();
-            th2.Start();
-            th1.Join();
-            th2.Join();
+            var th11 = new Thread(testObj1.Enqueuing);
+            var th12 = new Thread(testObj1.SendingFromQueue);
+            var th21 = new Thread(testObj2.Enqueuing);
+            var th22 = new Thread(testObj2.SendingFromQueue);
+            
+            th11.Start();
+            th12.Start();
+            th21.Start();
+            th22.Start();
+            th11.Join();
+            th12.Join();
+            th21.Join();
+            th22.Join();
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 
