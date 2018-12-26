@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -17,11 +18,13 @@ namespace TestUDPSpeed
             public IPEndPoint sender;
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
+            public Queue<byte[]> sendQueue = new Queue<byte[]>();
+            private bool enqueuing = true;
 
             public TestObj(int senderPort)
             {
                 sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), senderPort);
-                socket.Bind(sender); 
+                socket.Bind(sender);
             }
 
             public void Sending()
@@ -32,36 +35,78 @@ namespace TestUDPSpeed
                 {
                     lock (sendLock)
                     {
-                        var newSample = new byte[100];
-                        socket.SendTo(newSample, receiver);
-//                        socket.SendTo(sample, receiver);
+                        socket.SendTo(sample, receiver);
                         i++;
                     }
                 }
 
                 Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
             }
+
+            public void Enqueuing()
+            {
+                var i = 0;
+                var t1 = DateTime.Now;
+                while (i < count)
+                {
+//                    lock (sendQueue)
+//                    {
+                        sendQueue.Enqueue(sample);
+                        i++;
+//                    }
+                }
+
+                enqueuing = false;
+                Console.WriteLine($"{i} samples from port {sender.Port} enqueued in {DateTime.Now - t1}");
+            }
+
+            public void SendingFromQueue()
+            {
+                var i = 0;
+                while (enqueuing || sendQueue.Count > 0)
+                {
+                    while (sendQueue.Count > 0)
+                    {
+//                        lock (sendQueue)
+//                        {
+                            var sample = sendQueue.Dequeue();
+                            if (sample == null)
+                            {
+                                Console.WriteLine($"{i}-sample is null");
+                                i++;
+                            }
+                            else
+                            {
+                                lock (sendLock)
+                                {
+                                    socket.SendTo(sample, receiver);
+                                    i++;
+                                    if (i % 1000 == 0)
+                                    {
+                                        Console.WriteLine($"{i} samples sent");
+                                    }
+                                }
+                            }
+//                        }
+                    }
+                }
+                Console.WriteLine($"{i} samples processed");
+
+            }
         }
 
         static void Main(string[] args)
         {
             var testObj1 = new TestObj(5001);
-            var testObj2 = new TestObj(5002);
-//            var testObj3 = new TestObj(5003);
-//            testObj1.Sending();
-//            testObj1.Sending();
-//            MultiSending(testObj1, testObj2, testObj3);
 
             var t1 = DateTime.Now;
-            var th1 = new Thread(testObj1.Sending);
-            var th2 = new Thread(testObj2.Sending);
-//            var th3 = new Thread(testObj3.Sending);
-            th2.Start();
+            //var th1 = new Thread(testObj1.Sending);
+            var th1 = new Thread(testObj1.Enqueuing);
+            var th2 = new Thread(testObj1.SendingFromQueue);
             th1.Start();
-//            th3.Start();
+            th2.Start();
             th1.Join();
             th2.Join();
-//            th3.Join();
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 
