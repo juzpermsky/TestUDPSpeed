@@ -49,11 +49,11 @@ namespace TestUDPSpeed
                 var t1 = DateTime.Now;
                 while (i < count)
                 {
-//                    lock (sendQueue)
-//                    {
+                    lock (sendQueue)
+                    {
                         sendQueue.Enqueue(sample);
                         i++;
-//                    }
+                    }
                 }
 
                 enqueuing = false;
@@ -67,8 +67,8 @@ namespace TestUDPSpeed
                 {
                     while (sendQueue.Count > 0)
                     {
-//                        lock (sendQueue)
-//                        {
+                        lock (sendQueue)
+                        {
                             var sample = sendQueue.Dequeue();
                             if (sample == null)
                             {
@@ -87,7 +87,7 @@ namespace TestUDPSpeed
                                     }
                                 }
                             }
-//                        }
+                        }
                     }
                 }
                 Console.WriteLine($"{i} samples processed");
