@@ -19,7 +19,9 @@ namespace TestUDPSpeed
             public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
             public Queue<byte[]> sendQueue = new Queue<byte[]>();
-            private bool enqueuing = true;
+            public Queue<byte[]> receiveQueue = new Queue<byte[]>();
+            private bool sendEnqueuing = true;
+            private bool receiving = true;
 
             public TestObj(int senderPort)
             {
@@ -43,7 +45,7 @@ namespace TestUDPSpeed
                 Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
             }
 
-            public void Enqueuing()
+            public void SendEnqueuing()
             {
                 var i = 0;
                 var t1 = DateTime.Now;
@@ -56,15 +58,44 @@ namespace TestUDPSpeed
                     }
                 }
 
-                enqueuing = false;
+                sendEnqueuing = false;
                 Console.WriteLine($"{i} samples from port {sender.Port} enqueued in {DateTime.Now - t1}");
             }
+
+            public void ReceiveEnqueuing()
+            {
+                EndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
+                var rcvBuffer = new byte[1000];
+                while (receiving)
+                {
+                    socket.ReceiveFrom(rcvBuffer, ref endPoint);
+                    //todo: imhere
+                    lock (receiveQueue)
+                    {
+                        receiveQueue.Enqueue(sample);
+                    }
+                }
+            }
+
+            public void ReceiveDequeuing()
+            {
+                var i = 0;
+                while (receiving)
+                {
+                    lock (receiveQueue)
+                    {
+                        receiveQueue.Enqueue(sample);
+                        i++;
+                    }
+                }
+            }
+
 
             public void SendingFromQueue()
             {
                 var i = 0;
                 var t1 = DateTime.Now;
-                while (enqueuing || sendQueue.Count > 0)
+                while (sendEnqueuing || sendQueue.Count > 0)
                 {
                     while (sendQueue.Count > 0)
                     {
@@ -81,6 +112,7 @@ namespace TestUDPSpeed
                         }
                     }
                 }
+
                 Console.WriteLine($"{i} samples from port {sender.Port} sent in  {DateTime.Now - t1}");
             }
         }
@@ -88,22 +120,16 @@ namespace TestUDPSpeed
         static void Main(string[] args)
         {
             var testObj1 = new TestObj(5001);
-            var testObj2 = new TestObj(5002);
 
             var t1 = DateTime.Now;
-            var th11 = new Thread(testObj1.Enqueuing);
+            var th11 = new Thread(testObj1.SendEnqueuing);
             var th12 = new Thread(testObj1.SendingFromQueue);
-            var th21 = new Thread(testObj2.Enqueuing);
-            var th22 = new Thread(testObj2.SendingFromQueue);
-            
+
+
             th11.Start();
             th12.Start();
-            th21.Start();
-            th22.Start();
             th11.Join();
             th12.Join();
-            th21.Join();
-            th22.Join();
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 
