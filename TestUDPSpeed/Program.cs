@@ -68,24 +68,33 @@ namespace TestUDPSpeed
                 var rcvBuffer = new byte[1000];
                 while (receiving)
                 {
-                    socket.ReceiveFrom(rcvBuffer, ref endPoint);
-                    //todo: imhere
+                    var rcv = socket.ReceiveFrom(rcvBuffer, ref endPoint);
+                    var data = new byte[rcv];
+                    Array.Copy(rcvBuffer, data, rcv);
                     lock (receiveQueue)
                     {
-                        receiveQueue.Enqueue(sample);
+                        receiveQueue.Enqueue(data);
                     }
                 }
             }
 
             public void ReceiveDequeuing()
             {
+                var t1 = DateTime.Now;
                 var i = 0;
                 while (receiving)
                 {
-                    lock (receiveQueue)
+                    if (receiveQueue.Count > 0)
                     {
-                        receiveQueue.Enqueue(sample);
-                        i++;
+                        lock (receiveQueue)
+                        {
+                            var data = receiveQueue.Dequeue();
+                            i++;
+                            if (i % 1000 == 0)
+                            {
+                                Console.WriteLine($"{i} packets received at {DateTime.Now-t1}");
+                            }
+                        }
                     }
                 }
             }
@@ -119,17 +128,37 @@ namespace TestUDPSpeed
 
         static void Main(string[] args)
         {
-            var testObj1 = new TestObj(5001);
+            var testObj1 = new TestObj(5000);
 
+            var th11 = new Thread(testObj1.ReceiveEnqueuing);
+            var th12 = new Thread(testObj1.ReceiveDequeuing);
+
+            var testObj2 = new TestObj(5001);
+
+            var th21 = new Thread(testObj2.SendEnqueuing);
+            var th22 = new Thread(testObj2.SendingFromQueue);
+
+            var testObj3 = new TestObj(5002);
+
+            var th31 = new Thread(testObj3.SendEnqueuing);
+            var th32 = new Thread(testObj3.SendingFromQueue);
+
+            
             var t1 = DateTime.Now;
-            var th11 = new Thread(testObj1.SendEnqueuing);
-            var th12 = new Thread(testObj1.SendingFromQueue);
-
-
             th11.Start();
             th12.Start();
+            th21.Start();
+            th22.Start();
+            th31.Start();
+            th32.Start();
+
             th11.Join();
             th12.Join();
+            th21.Join();
+            th22.Join();
+            th31.Join();
+            th32.Join();
+
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 
