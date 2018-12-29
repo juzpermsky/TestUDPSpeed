@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
@@ -51,9 +52,13 @@ namespace TestUDPSpeed
                 var t1 = DateTime.Now;
                 while (i < count)
                 {
+                    var unreliableMsg = new byte[sample.Length + 2];
+                    unreliableMsg[0] = (byte) NetMessage.Payload;
+                    unreliableMsg[1] = (byte) QOS.Unreliable;
+                    Array.Copy(sample, 0, unreliableMsg, 2, sample.Length);
                     lock (sendQueue)
                     {
-                        sendQueue.Enqueue(sample);
+                        sendQueue.Enqueue(unreliableMsg);
                         i++;
                     }
                 }
@@ -66,15 +71,41 @@ namespace TestUDPSpeed
             {
                 EndPoint endPoint = new IPEndPoint(IPAddress.Any, 0);
                 var rcvBuffer = new byte[1000];
-                while (receiving)
-                {
-                    var rcv = socket.ReceiveFrom(rcvBuffer, ref endPoint);
-                    var data = new byte[rcv];
-                    Array.Copy(rcvBuffer, data, rcv);
-                    lock (receiveQueue)
+                using (var ms = new MemoryStream(rcvBuffer))
+                using (var br = new BinaryReader(ms))
+                    while (receiving)
                     {
-                        receiveQueue.Enqueue(data);
+                        var rcv = socket.ReceiveFrom(rcvBuffer, ref endPoint);
+                        ms.Position = 0;
+                        var netMsg = (NetMessage) br.ReadByte();
+                        switch (netMsg)
+                        {
+                            case NetMessage.Payload:
+                                var payload = new byte[rcv - 1];
+                                Array.Copy(rcvBuffer, 1, payload, 0, rcv - 1);
+                                ReceivePayload(payload, (IPEndPoint) endPoint);
+                                break;
+                        }
+
+                        var data = new byte[rcv];
+                        Array.Copy(rcvBuffer, data, rcv);
                     }
+            }
+
+            private void ReceivePayload(byte[] payload, IPEndPoint endPoint)
+            {
+                var qos = (QOS) payload[0];
+                switch (qos)
+                {
+                    case QOS.Unreliable:
+                        var unreliableMsg = new byte[payload.Length - 1];
+                        Array.Copy(payload, 1, unreliableMsg, 0, unreliableMsg.Length);
+                        lock (receiveQueue)
+                        {
+                            receiveQueue.Enqueue(unreliableMsg);
+                        }
+
+                        break;
                 }
             }
 
@@ -92,7 +123,7 @@ namespace TestUDPSpeed
                             i++;
                             if (i % 1000 == 0)
                             {
-                                Console.WriteLine($"{i} packets received at {DateTime.Now-t1}");
+                                Console.WriteLine($"{i} packets received at {DateTime.Now - t1}");
                             }
                         }
                     }
@@ -137,13 +168,15 @@ namespace TestUDPSpeed
 
             var th21 = new Thread(testObj2.SendEnqueuing);
             var th22 = new Thread(testObj2.SendingFromQueue);
-
             var testObj3 = new TestObj(5002);
 
             var th31 = new Thread(testObj3.SendEnqueuing);
             var th32 = new Thread(testObj3.SendingFromQueue);
+            var testObj4 = new TestObj(5003);
 
-            
+            var th41 = new Thread(testObj4.SendEnqueuing);
+            var th42 = new Thread(testObj4.SendingFromQueue);
+
             var t1 = DateTime.Now;
             th11.Start();
             th12.Start();
@@ -151,6 +184,8 @@ namespace TestUDPSpeed
             th22.Start();
             th31.Start();
             th32.Start();
+            th41.Start();
+            th42.Start();
 
             th11.Join();
             th12.Join();
@@ -158,6 +193,8 @@ namespace TestUDPSpeed
             th22.Join();
             th31.Join();
             th32.Join();
+            th41.Join();
+            th42.Join();
 
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
