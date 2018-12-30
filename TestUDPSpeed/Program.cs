@@ -21,7 +21,7 @@ namespace TestUDPSpeed
             var th22 = new Thread(testObj2.ReceiveDequeuing);
             var th23 = new Thread(testObj2.SendingFromQueue);
             var th24 = new Thread(testObj2.SendEnqueuing);
-            
+
             var testObj3 = new NewNet(5002, maxConnections);
 
             var th31 = new Thread(testObj3.ReceiveEnqueuing);
@@ -30,13 +30,14 @@ namespace TestUDPSpeed
             var th34 = new Thread(testObj3.SendEnqueuing);
 
 
+/*
             var testObj4 = new NewNet(5003, maxConnections);
 
             var th41 = new Thread(testObj4.ReceiveEnqueuing);
             var th42 = new Thread(testObj4.ReceiveDequeuing);
             var th43 = new Thread(testObj4.SendingFromQueue);
             var th44 = new Thread(testObj4.SendEnqueuing);
-            
+*/
 
             var t1 = DateTime.Now;
             th11.Start();
@@ -46,29 +47,63 @@ namespace TestUDPSpeed
             th21.Start();
             th22.Start();
             th23.Start();
-            accepted2
+
+            th31.Start();
+            th32.Start();
+            th33.Start();
+
+            var accepted2 = false;
             var conn2 = testObj2.Connect(testObj2.receiver.Address, testObj2.receiver.Port);
-            
-            
-            
-            th24.Start();
-            
+
+            while (testObj2.connections[conn2] != null && !accepted2)
+            {
+                if (testObj2.connections[conn2].accepted)
+                {
+                    accepted2 = true;
+                    testObj2.receiving = false;
+                }
+            }
+
+
+            var accepted3 = false;
+            var conn3 = testObj3.Connect(testObj3.receiver.Address, testObj3.receiver.Port);
+
+            while (testObj3.connections[conn3] != null && !accepted3)
+            {
+                if (testObj3.connections[conn2].accepted)
+                {
+                    accepted3 = true;
+                    testObj3.receiving = false;
+                }
+            }
+
+            if (accepted2 && accepted3)
+            {
+                testObj1.sendEnqueuing = false;
+                th24.Start();
+                th34.Start();
+            }
+
+
+            //-----------------------------------
+
+/*
             th31.Start();
             th32.Start();
             th33.Start();
             th34.Start();
-            
+
             th41.Start();
             th42.Start();
             th43.Start();
             th44.Start();
-
+*/
             //----------------------------------
-            
+
             th11.Join();
             th12.Join();
             th13.Join();
-            
+
             th21.Join();
             th22.Join();
             th23.Join();
@@ -79,11 +114,12 @@ namespace TestUDPSpeed
             th33.Join();
             th34.Join();
 
+/*
             th41.Join();
             th42.Join();
             th43.Join();
             th44.Join();
-
+*/
             Console.WriteLine($"total time {DateTime.Now - t1}");
         }
 

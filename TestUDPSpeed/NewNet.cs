@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
@@ -12,21 +13,23 @@ namespace TestUDPSpeed
         public const int TryConnectLimit = 10;
         private int maxConnections;
         private int numConnections;
-        private Connection[] connections;
+        public Connection[] connections;
         private bool[] usedConnections;
 
         private static readonly object sendLock = new object();
+        private static readonly object receiveQueueLock = new object();
+        private static readonly object sendQueueLock = new object();
         public byte[] sample = new byte[100];
         public int count = 10000;
-        public Socket socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+        public Socket socket = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
 
         public IPEndPoint sender;
         public IPEndPoint receiver = new IPEndPoint(IPAddress.Parse("192.168.1.100"), 5000);
 
         public Queue<SendItem> sendQueue = new Queue<SendItem>();
         public Queue<byte[]> receiveQueue = new Queue<byte[]>();
-        private bool sendEnqueuing = true;
-        private bool receiving = true;
+        public bool sendEnqueuing = true;
+        public bool receiving = true;
 
         public NewNet(int senderPort, int maxConnections)
         {
@@ -35,7 +38,16 @@ namespace TestUDPSpeed
             usedConnections = new bool[maxConnections];
             connections = new Connection[maxConnections];
             sender = new IPEndPoint(IPAddress.Parse("192.168.1.100"), senderPort);
-            socket.Bind(sender);
+            try
+            {
+
+                socket.Bind(sender);
+            }
+            catch(SocketException e)
+            {
+                Console.WriteLine(e.ErrorCode);
+                throw e;
+            }
         }
 
         public int Connect(IPAddress ip, int port)
@@ -79,11 +91,13 @@ namespace TestUDPSpeed
 
                 Thread.Sleep(connection.rtt);
                 connection.tryConnectNum++;
+//                Console.WriteLine($"try connect {connection.tryConnectNum}");
             }
 
             if (!connection.accepted && connection.tryConnectNum == TryConnectLimit)
             {
                 // Все попытки подключиться исчерпаны, делаем Disconnect 
+//                Console.WriteLine("disconnecting");
                 ProcessDisconnect(connection.id);
             }
         }
@@ -92,6 +106,7 @@ namespace TestUDPSpeed
         private void ProcessDisconnect(int connId)
         {
             connections[connId] = null;
+            usedConnections[connId] = false;
             numConnections--;
         }
 
@@ -118,6 +133,8 @@ namespace TestUDPSpeed
                     socket.SendTo(sample, receiver);
                     i++;
                 }
+
+//                Thread.Sleep(1);
             }
 
             Console.WriteLine($"{i} samples sent from port {sender.Port} in {DateTime.Now - t1}");
@@ -133,7 +150,7 @@ namespace TestUDPSpeed
                 unreliableMsg[0] = (byte) NetMessage.Payload;
                 unreliableMsg[1] = (byte) QOS.Unreliable;
                 Array.Copy(sample, 0, unreliableMsg, 2, sample.Length);
-                lock (sendQueue)
+                lock (sendQueueLock)
                 {
                     sendQueue.Enqueue(new SendItem(unreliableMsg, receiver));
                     i++;
@@ -166,7 +183,7 @@ namespace TestUDPSpeed
                             else
                             {
                                 var deniedMsg = new[] {(byte) NetMessage.ConnectDenied};
-                                lock (sendQueue)
+                                lock (sendQueueLock)
                                 {
                                     sendQueue.Enqueue(new SendItem(deniedMsg, (IPEndPoint) endPoint));
                                 }
@@ -181,15 +198,19 @@ namespace TestUDPSpeed
                             Array.Copy(rcvBuffer, 1, payload, 0, rcv - 1);
                             ReceivePayload(payload, (IPEndPoint) endPoint);
                             break;
+                        default:
+                            Console.WriteLine("unknown format");
+                            break;
                     }
 
-                    var data = new byte[rcv];
-                    Array.Copy(rcvBuffer, data, rcv);
+
+//                    Thread.Sleep(1);
                 }
         }
 
         private void ProcessConnectRequest(IPEndPoint endPoint)
         {
+//            Console.WriteLine("connect request received");
             var freeId = -1;
             for (var i = 0; i < usedConnections.Length; i++)
             {
@@ -218,8 +239,9 @@ namespace TestUDPSpeed
                 usedConnections[freeId] = true;
                 connections[freeId] = new Connection(freeId, endPoint, true, this);
 
-                lock (sendQueue)
+                lock (sendQueueLock)
                 {
+//                    Console.WriteLine($"enqueuing connect accept to {endPoint}");
                     // Отправляем ConnectAccept
                     sendQueue.Enqueue(new SendItem(new[] {(byte) NetMessage.ConnectAccept}, endPoint));
                 }
@@ -228,7 +250,7 @@ namespace TestUDPSpeed
             }
             else
             {
-                lock (sendQueue)
+                lock (sendQueueLock)
                 {
                     // Отправляем ConnectDenied
                     sendQueue.Enqueue(new SendItem(new[] {(byte) NetMessage.ConnectDenied}, endPoint));
@@ -238,11 +260,13 @@ namespace TestUDPSpeed
 
         private void ProcessConnectAccept(IPEndPoint endPoint)
         {
+//            Console.WriteLine($"connect accept received from {endPoint}");
             for (var i = 0; i < usedConnections.Length; i++)
             {
                 if (usedConnections[i] && connections[i].endPoint.Equals(endPoint) && !connections[i].accepted)
                 {
                     connections[i].accepted = true;
+//                    Console.WriteLine($"connection {i} accepted");
                     return;
                 }
             }
@@ -256,7 +280,7 @@ namespace TestUDPSpeed
                 case QOS.Unreliable:
                     var unreliableMsg = new byte[payload.Length - 1];
                     Array.Copy(payload, 1, unreliableMsg, 0, unreliableMsg.Length);
-                    lock (receiveQueue)
+                    lock (receiveQueueLock)
                     {
                         receiveQueue.Enqueue(unreliableMsg);
                     }
@@ -273,11 +297,13 @@ namespace TestUDPSpeed
             {
                 if (receiveQueue.Count > 0)
                 {
-                    lock (receiveQueue)
+                    lock (receiveQueueLock)
                     {
                         var data = receiveQueue.Dequeue();
+
+                        
                         i++;
-                        if (i % 1000 == 0)
+                        if (i % 10000 == 0)
                         {
                             Console.WriteLine($"{i} packets received at {DateTime.Now - t1}");
                         }
@@ -296,15 +322,19 @@ namespace TestUDPSpeed
                 while (sendQueue.Count > 0)
                 {
                     SendItem sendItem;
-                    lock (sendQueue)
+                    lock (sendQueueLock)
                     {
                         sendItem = sendQueue.Dequeue();
                     }
 
                     lock (sendLock)
                     {
+                        
                         socket.SendTo(sendItem.data, sendItem.endPoint);
-                        i++;
+                        if ((NetMessage) sendItem.data[0] == NetMessage.Payload)
+                        {
+                            i++;
+                        }
                     }
                 }
             }
